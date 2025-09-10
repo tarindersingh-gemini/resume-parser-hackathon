@@ -1,0 +1,1936 @@
+openapi: 3.1.1
+info:
+  title: AI-Powered Resume Parser API
+  version: 1.0.0
+  description: |
+    An intelligent resume parsing API that uses AI/ML technologies to extract, analyze, and structure information from various resume formats.
+    
+    ## Features
+    - Multi-format support (PDF, DOCX, TXT, images)
+    - AI-powered data extraction and enhancement
+    - Real-time processing status tracking
+    - Comprehensive analytics and insights
+    - Bulk processing capabilities
+    - RESTful API design with OpenAPI compliance
+    
+    ## Authentication
+    This API uses Bearer token authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your-token>
+    ```
+    
+    ## Rate Limits
+    - 1000 requests per hour per API key
+    - Maximum file size: 10MB per upload
+    - Bulk upload limit: 50 files per request
+    
+  contact:
+    name: API Support
+    email: api-support@resumeparser.ai
+    url: https://docs.resumeparser.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+    
+servers:
+  - url: https://api.resumeparser.ai/v1
+    description: Production server
+  - url: https://staging-api.resumeparser.ai/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Check the health and status of the API service
+      operationId: healthCheck
+      tags:
+        - System
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Healthy service response
+                  value:
+                    status: "healthy"
+                    timestamp: "2025-09-10T10:30:00Z"
+                    version: "1.0.0"
+                    uptime: 3600
+                    services:
+                      database: "connected"
+                      ai_service: "operational"
+                      storage: "available"
+
+  /resumes/upload:
+    post:
+      summary: Upload and Parse Resume
+      description: |
+        Upload a resume file for AI-powered parsing and data extraction.
+        Supports multiple formats including PDF, DOCX, TXT, and images (with OCR).
+      operationId: uploadResume
+      tags:
+        - Resume Processing
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Resume file to upload
+                options:
+                  $ref: '#/components/schemas/ProcessingOptions'
+            examples:
+              basic_upload:
+                summary: Basic resume upload
+                value:
+                  file: "[binary data]"
+              advanced_upload:
+                summary: Upload with processing options
+                value:
+                  file: "[binary data]"
+                  options:
+                    extractTechnologies: true
+                    performOCR: true
+                    enhanceWithAI: true
+                    anonymize: false
+                    language: "en"
+      responses:
+        '202':
+          description: Resume uploaded successfully and processing started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+              examples:
+                upload_success:
+                  summary: Successful upload response
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "processing"
+                    message: "Resume uploaded successfully"
+                    estimatedProcessingTime: 30
+                    webhookUrl: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                file_too_large:
+                  summary: File size exceeded
+                  value:
+                    error: "FILE_TOO_LARGE"
+                    message: "File size exceeds maximum limit of 10MB"
+                    details:
+                      maxSize: "10MB"
+                      receivedSize: "15MB"
+        '415':
+          description: Unsupported media type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unsupported_format:
+                  summary: Unsupported file format
+                  value:
+                    error: "UNSUPPORTED_FORMAT"
+                    message: "File format not supported"
+                    details:
+                      supportedFormats: ["pdf", "docx", "doc", "txt", "jpg", "png"]
+                      receivedFormat: "xlsx"
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /resumes/{id}:
+    get:
+      summary: Get Parsed Resume Data
+      description: Retrieve the parsed and structured data from a resume
+      operationId: getResumeData
+      tags:
+        - Resume Processing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the resume
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: include
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [metadata, personalInfo, experience, education, skills, certifications, aiEnhancements]
+            style: form
+            explode: false
+          description: Specify which sections to include in the response
+          example: "personalInfo,experience,skills"
+      responses:
+        '200':
+          description: Resume data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParsedResumeData'
+              examples:
+                complete_resume:
+                  summary: Complete parsed resume data
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    metadata:
+                      fileName: "john_doe_resume.pdf"
+                      fileSize: 2048576
+                      uploadedAt: "2025-09-10T10:30:00Z"
+                      processedAt: "2025-09-10T10:30:45Z"
+                      processingTime: 45.2
+                    personalInfo:
+                      name:
+                        first: "John"
+                        last: "Doe"
+                        full: "John Doe"
+                      contact:
+                        email: "john.doe@example.com"
+                        phone: "+1-555-123-4567"
+                        address:
+                          street: "123 Main St"
+                          city: "San Francisco"
+                          state: "CA"
+                          zipCode: "94105"
+                          country: "USA"
+                        linkedin: "https://linkedin.com/in/johndoe"
+                    experience:
+                      - id: "exp-1"
+                        title: "Senior Software Engineer"
+                        company: "Tech Corp"
+                        location: "San Francisco, CA"
+                        startDate: "2021-03-01"
+                        endDate: "2025-09-01"
+                        current: true
+                        duration: "4 years 6 months"
+                        description: "Led development of microservices architecture..."
+                        achievements:
+                          - "Improved system performance by 40%"
+                          - "Led team of 5 developers"
+                        technologies: ["Python", "Docker", "AWS", "PostgreSQL"]
+        '202':
+          description: Resume is still being processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingStatus'
+              examples:
+                still_processing:
+                  summary: Resume still being processed
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "processing"
+                    progress: 65
+                    currentStep: "extracting_experience"
+                    estimatedTimeRemaining: 15
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update Parsed Resume Data
+      description: Update or correct the parsed resume information
+      operationId: updateResumeData
+      tags:
+        - Resume Processing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the resume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResumeUpdateRequest'
+            examples:
+              update_contact:
+                summary: Update contact information
+                value:
+                  personalInfo:
+                    contact:
+                      email: "john.doe.updated@example.com"
+                      phone: "+1-555-987-6543"
+              update_experience:
+                summary: Update work experience
+                value:
+                  experience:
+                    - id: "exp-1"
+                      title: "Lead Software Engineer"
+                      achievements:
+                        - "Improved system performance by 50%"
+                        - "Led team of 8 developers"
+      responses:
+        '200':
+          description: Resume data updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParsedResumeData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete Resume Data
+      description: Permanently delete a resume and all associated data
+      operationId: deleteResume
+      tags:
+        - Resume Processing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the resume
+      responses:
+        '204':
+          description: Resume deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /resumes/{id}/status:
+    get:
+      summary: Get Processing Status
+      description: Get the current processing status of a resume
+      operationId: getProcessingStatus
+      tags:
+        - Resume Processing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the resume
+      responses:
+        '200':
+          description: Processing status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingStatus'
+              examples:
+                processing:
+                  summary: Resume being processed
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "processing"
+                    progress: 75
+                    currentStep: "ai_enhancement"
+                    estimatedTimeRemaining: 10
+                    steps:
+                      - step: "file_validation"
+                        status: "completed"
+                        completedAt: "2025-09-10T10:30:05Z"
+                      - step: "text_extraction"
+                        status: "completed"
+                        completedAt: "2025-09-10T10:30:15Z"
+                      - step: "data_parsing"
+                        status: "completed"
+                        completedAt: "2025-09-10T10:30:35Z"
+                      - step: "ai_enhancement"
+                        status: "in_progress"
+                        startedAt: "2025-09-10T10:30:35Z"
+                completed:
+                  summary: Resume processing completed
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "completed"
+                    progress: 100
+                    currentStep: "completed"
+                    completedAt: "2025-09-10T10:30:45Z"
+                    processingTime: 45.2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /resumes/{id}/match:
+    post:
+      summary: Match Resume with Job Description
+      description: |
+        Analyze and score how well a resume matches a specific job description using AI.
+        Provides detailed relevancy scoring, gap analysis, and improvement recommendations.
+      operationId: matchResumeWithJob
+      tags:
+        - Resume Processing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the resume to match
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobMatchingRequest'
+            examples:
+              senior_engineer_match:
+                summary: Match resume against Senior Software Engineer position
+                value:
+                  jobDescription:
+                    title: "Senior Software Engineer"
+                    company: "Tech Innovation Corp"
+                    location: "San Francisco, CA"
+                    type: "full-time"
+                    experience:
+                      minimum: 5
+                      preferred: 8
+                      level: "senior"
+                    description: "We are seeking a highly skilled Senior Software Engineer to join our dynamic team and lead the development of cutting-edge applications."
+                    requirements:
+                      required:
+                        - "5+ years of software development experience"
+                        - "Proficiency in Python and JavaScript"
+                        - "Experience with cloud platforms (AWS, GCP, or Azure)"
+                        - "Strong understanding of microservices architecture"
+                        - "Bachelor's degree in Computer Science or related field"
+                      preferred:
+                        - "Experience with Docker and Kubernetes"
+                        - "Knowledge of machine learning frameworks"
+                        - "Previous startup experience"
+                        - "Master's degree preferred"
+                    skills:
+                      required: ["Python", "JavaScript", "AWS", "Microservices", "REST APIs"]
+                      preferred: ["Docker", "Kubernetes", "Machine Learning", "PostgreSQL", "React"]
+                    salary:
+                      min: 140000
+                      max: 180000
+                      currency: "USD"
+                    industry: "technology"
+                  options:
+                    includeExplanation: true
+                    detailedBreakdown: true
+                    suggestImprovements: true
+      responses:
+        '200':
+          description: Resume-job matching completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobMatchingResponse'
+              examples:
+                strong_match_result:
+                  summary: Strong match result with detailed breakdown
+                  value:
+                    matchId: "match-550e8400-e29b-41d4-a716-446655440001"
+                    resumeId: "550e8400-e29b-41d4-a716-446655440000"
+                    jobTitle: "Senior Software Engineer"
+                    company: "Tech Innovation Corp"
+                    matchingResults:
+                      overallScore: 87
+                      confidence: 0.92
+                      recommendation: "Strong Match"
+                      categoryScores:
+                        skillsMatch:
+                          score: 85
+                          weight: 35
+                        experienceMatch:
+                          score: 90
+                          weight: 25
+                        educationMatch:
+                          score: 95
+                          weight: 15
+                        roleAlignment:
+                          score: 88
+                          weight: 15
+                        locationMatch:
+                          score: 100
+                          weight: 10
+                      strengthAreas:
+                        - "Strong technical background in required languages"
+                        - "Appropriate experience level for senior role"
+                        - "Educational background aligns well"
+                        - "Location match eliminates relocation concerns"
+                      gapAnalysis:
+                        criticalGaps:
+                          - category: "technical_skills"
+                            missing: "REST APIs experience"
+                            impact: "medium"
+                            suggestion: "Highlight any API development work in previous roles"
+                      salaryAlignment:
+                        candidateExpectation: "Not specified"
+                        jobSalaryRange: "$140,000 - $180,000"
+                        alignment: "within_range"
+                    explanation:
+                      summary: "This candidate presents a strong match for the Senior Software Engineer position with 87% compatibility."
+                      keyFactors:
+                        - "Technical skill set matches 80% of required technologies"
+                        - "Experience level (5.5 years) meets minimum requirements"
+                        - "Educational background exceeds minimum requirements"
+                      recommendations:
+                        - "Schedule technical interview focusing on REST API development"
+                        - "Consider candidate for fast-track interview process"
+                    metadata:
+                      matchedAt: "2025-09-10T10:45:00Z"
+                      processingTime: 3.2
+                      algorithm: "AI-Enhanced Semantic Matching v2.1"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Invalid job description format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_job_description:
+                  summary: Invalid or incomplete job description
+                  value:
+                    error: "INVALID_JOB_DESCRIPTION"
+                    message: "Job description must include title, requirements, and skills"
+                    details:
+                      missingFields: ["requirements.required", "skills.required"]
+                    timestamp: "2025-09-10T10:30:00Z"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /analytics/resume/{id}:
+    get:
+      summary: Get Resume Analytics
+      description: Get AI-generated analytics and insights for a specific resume
+      operationId: getResumeAnalytics
+      tags:
+        - Analytics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the resume
+      responses:
+        '200':
+          description: Resume analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeAnalytics'
+              examples:
+                analytics_result:
+                  summary: Complete analytics for a resume
+                  value:
+                    resumeId: "550e8400-e29b-41d4-a716-446655440000"
+                    qualityScore: 87
+                    completenessScore: 92
+                    strengthAreas:
+                      - "Strong technical skills"
+                      - "Progressive career growth"
+                      - "Quantifiable achievements"
+                    improvementSuggestions:
+                      - "Add more specific metrics to achievements"
+                      - "Include relevant certifications"
+                      - "Expand on leadership experience"
+                    industryFit:
+                      "software_engineering": 0.95
+                      "data_science": 0.45
+                      "product_management": 0.25
+                    salaryEstimate:
+                      min: 120000
+                      max: 160000
+                      currency: "USD"
+                      confidence: 0.78
+                    careerLevel: "senior"
+                    experienceGaps: []
+                    skillGaps:
+                      recommended: ["Kubernetes", "Terraform", "GraphQL"]
+                      emerging: ["AI/ML", "Blockchain"]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /analytics/market:
+    get:
+      summary: Get Market Analytics
+      description: Get market analytics and trends based on parsed resume data
+      operationId: getMarketAnalytics
+      tags:
+        - Analytics
+      parameters:
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+            enum: [30d, 90d, 1y, all]
+            default: 90d
+          description: Time frame for analytics
+        - name: industry
+          in: query
+          schema:
+            type: string
+          description: Filter by specific industry
+        - name: location
+          in: query
+          schema:
+            type: string
+          description: Filter by location
+      responses:
+        '200':
+          description: Market analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketAnalytics'
+              examples:
+                market_trends:
+                  summary: Market analytics and trends
+                  value:
+                    timeframe: "90d"
+                    totalResumes: 1250
+                    topSkills:
+                      - skill: "Python"
+                        count: 680
+                        trend: "growing"
+                        growthRate: 0.15
+                      - skill: "JavaScript"
+                        count: 520
+                        trend: "stable"
+                        growthRate: 0.03
+                    salaryTrends:
+                      "software_engineer":
+                        median: 135000
+                        trend: "increasing"
+                        changePercent: 8.5
+                    emergingSkills:
+                      - "Large Language Models"
+                      - "Kubernetes"
+                      - "Terraform"
+                    industryDistribution:
+                      "technology": 45.2
+                      "finance": 18.7
+                      "healthcare": 12.3
+                      "consulting": 10.1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for API authentication
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - version
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall service health status
+        timestamp:
+          type: string
+          format: date-time
+          description: Current server timestamp
+        version:
+          type: string
+          description: API version
+        uptime:
+          type: integer
+          description: Service uptime in seconds
+        services:
+          type: object
+          additionalProperties:
+            type: string
+          description: Status of individual service components
+
+    ProcessingOptions:
+      type: object
+      properties:
+        extractTechnologies:
+          type: boolean
+          default: true
+          description: Extract and categorize technologies and tools
+        performOCR:
+          type: boolean
+          default: true
+          description: Perform OCR on image-based documents
+        enhanceWithAI:
+          type: boolean
+          default: true
+          description: Use AI for data enhancement and insights
+        anonymize:
+          type: boolean
+          default: false
+          description: Remove personally identifiable information
+        language:
+          type: string
+          default: "en"
+          description: Primary language of the resume
+        webhookUrl:
+          type: string
+          format: uri
+          description: URL to call when processing is complete
+
+    UploadResponse:
+      type: object
+      required:
+        - id
+        - status
+        - message
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the uploaded resume
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+          description: Current processing status
+        message:
+          type: string
+          description: Human-readable status message
+        estimatedProcessingTime:
+          type: integer
+          description: Estimated processing time in seconds
+        webhookUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: Webhook URL for completion notification
+
+    ProcessingStatus:
+      type: object
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Resume identifier
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+          description: Current processing status
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Processing progress percentage
+        currentStep:
+          type: string
+          description: Current processing step
+        estimatedTimeRemaining:
+          type: integer
+          description: Estimated remaining time in seconds
+        startedAt:
+          type: string
+          format: date-time
+          description: Processing start timestamp
+        completedAt:
+          type: string
+          format: date-time
+          description: Processing completion timestamp
+        processingTime:
+          type: number
+          description: Total processing time in seconds
+        error:
+          type: string
+          description: Error message if processing failed
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              step:
+                type: string
+              status:
+                type: string
+                enum: [pending, in_progress, completed, failed]
+              startedAt:
+                type: string
+                format: date-time
+              completedAt:
+                type: string
+                format: date-time
+
+    ParsedResumeData:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique resume identifier
+        metadata:
+          $ref: '#/components/schemas/ResumeMetadata'
+        personalInfo:
+          $ref: '#/components/schemas/PersonalInfo'
+        summary:
+          $ref: '#/components/schemas/ProfessionalSummary'
+        experience:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkExperience'
+        education:
+          type: array
+          items:
+            $ref: '#/components/schemas/Education'
+        skills:
+          $ref: '#/components/schemas/Skills'
+        certifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Certification'
+        aiEnhancements:
+          $ref: '#/components/schemas/AIEnhancements'
+
+    ResumeMetadata:
+      type: object
+      properties:
+        fileName:
+          type: string
+          description: Original filename
+        fileSize:
+          type: integer
+          description: File size in bytes
+        fileType:
+          type: string
+          description: File MIME type
+        uploadedAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+        processingTime:
+          type: number
+          description: Processing time in seconds
+        language:
+          type: string
+          description: Detected language
+
+    PersonalInfo:
+      type: object
+      properties:
+        name:
+          type: object
+          properties:
+            first:
+              type: string
+            last:
+              type: string
+            full:
+              type: string
+            prefix:
+              type: string
+            suffix:
+              type: string
+        contact:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
+            address:
+              type: object
+              properties:
+                street:
+                  type: string
+                city:
+                  type: string
+                state:
+                  type: string
+                zipCode:
+                  type: string
+                country:
+                  type: string
+            linkedin:
+              type: string
+              format: uri
+            website:
+              type: string
+              format: uri
+            github:
+              type: string
+              format: uri
+            socialLinks:
+              type: array
+              items:
+                type: object
+                properties:
+                  platform:
+                    type: string
+                  url:
+                    type: string
+                    format: uri
+
+    ProfessionalSummary:
+      type: object
+      properties:
+        text:
+          type: string
+          description: Summary or objective text
+        careerLevel:
+          type: string
+          enum: [entry, junior, mid-level, senior, executive, c-level]
+        industryFocus:
+          type: string
+          description: Primary industry focus
+        yearsOfExperience:
+          type: integer
+          description: Total years of experience
+
+    WorkExperience:
+      type: object
+      required:
+        - id
+        - title
+        - company
+      properties:
+        id:
+          type: string
+          description: Unique experience identifier
+        title:
+          type: string
+          description: Job title or role
+        company:
+          type: string
+          description: Company name
+        location:
+          type: string
+          description: Work location
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        current:
+          type: boolean
+          description: Is this the current position
+        duration:
+          type: string
+          description: Human-readable duration
+        description:
+          type: string
+          description: Job description
+        achievements:
+          type: array
+          items:
+            type: string
+          description: Key achievements and accomplishments
+        responsibilities:
+          type: array
+          items:
+            type: string
+          description: Key responsibilities
+        technologies:
+          type: array
+          items:
+            type: string
+          description: Technologies and tools used
+        industry:
+          type: string
+          description: Company industry
+
+    Education:
+      type: object
+      properties:
+        degree:
+          type: string
+          description: Degree type
+        field:
+          type: string
+          description: Field of study
+        institution:
+          type: string
+          description: Educational institution
+        location:
+          type: string
+          description: Institution location
+        graduationDate:
+          type: string
+          format: date
+        gpa:
+          type: number
+          minimum: 0
+          maximum: 4
+        honors:
+          type: array
+          items:
+            type: string
+          description: Academic honors and achievements
+        coursework:
+          type: array
+          items:
+            type: string
+          description: Relevant coursework
+        thesis:
+          type: string
+          description: Thesis or dissertation title
+
+    Skills:
+      type: object
+      properties:
+        technical:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+                description: Skill category
+              items:
+                type: array
+                items:
+                  type: string
+        soft:
+          type: array
+          items:
+            type: string
+          description: Soft skills
+        languages:
+          type: array
+          items:
+            type: object
+            properties:
+              language:
+                type: string
+              proficiency:
+                type: string
+                enum: [basic, conversational, fluent, native]
+
+    Certification:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Certification name
+        issuer:
+          type: string
+          description: Issuing organization
+        issueDate:
+          type: string
+          format: date
+        expiryDate:
+          type: string
+          format: date
+          nullable: true
+        credentialId:
+          type: string
+          description: Credential identifier
+        url:
+          type: string
+          format: uri
+          description: Verification URL
+
+    AIEnhancements:
+      type: object
+      properties:
+        qualityScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Overall resume quality score
+        completenessScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Resume completeness score
+        suggestions:
+          type: array
+          items:
+            type: string
+          description: Improvement suggestions
+        industryFit:
+          type: object
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 1
+          description: Industry fit scores
+        careerLevel:
+          type: string
+          description: AI-determined career level
+        salaryEstimate:
+          type: object
+          properties:
+            min:
+              type: integer
+            max:
+              type: integer
+            currency:
+              type: string
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+        skillGaps:
+          type: array
+          items:
+            type: string
+          description: Identified skill gaps
+        strengths:
+          type: array
+          items:
+            type: string
+          description: Identified strengths
+
+    SearchRequest:
+      type: object
+      properties:
+        query:
+          type: object
+          properties:
+            skills:
+              type: array
+              items:
+                type: string
+            experience:
+              type: object
+              properties:
+                min:
+                  type: integer
+                max:
+                  type: integer
+            education:
+              type: object
+              properties:
+                level:
+                  type: array
+                  items:
+                    type: string
+                field:
+                  type: string
+            location:
+              type: object
+              properties:
+                city:
+                  type: string
+                state:
+                  type: string
+                country:
+                  type: string
+                radius:
+                  type: integer
+                  description: Search radius in miles
+            jobTitle:
+              type: string
+            careerLevel:
+              type: string
+              enum: [entry, junior, mid-level, senior, executive]
+            salary:
+              type: object
+              properties:
+                min:
+                  type: integer
+                max:
+                  type: integer
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+        sort:
+          type: object
+          properties:
+            field:
+              type: string
+              enum: [relevance, date, experience, salary]
+              default: relevance
+            order:
+              type: string
+              enum: [asc, desc]
+              default: desc
+
+    SearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              personalInfo:
+                $ref: '#/components/schemas/PersonalInfo'
+              summary:
+                $ref: '#/components/schemas/ProfessionalSummary'
+              relevanceScore:
+                type: number
+                minimum: 0
+                maximum: 1
+              matchedCriteria:
+                type: object
+                additionalProperties: true
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+        facets:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: integer
+
+    BulkUploadResponse:
+      type: object
+      required:
+        - batchId
+        - status
+        - totalFiles
+        - acceptedFiles
+      properties:
+        batchId:
+          type: string
+          description: Unique batch identifier
+        status:
+          type: string
+          enum: [processing, completed, failed]
+        totalFiles:
+          type: integer
+          description: Total number of files submitted
+        acceptedFiles:
+          type: integer
+          description: Number of files accepted for processing
+        rejectedFiles:
+          type: integer
+          description: Number of files rejected
+        rejectedReasons:
+          type: array
+          items:
+            type: object
+            properties:
+              file:
+                type: string
+              reason:
+                type: string
+        estimatedProcessingTime:
+          type: integer
+          description: Estimated total processing time in seconds
+        resumes:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              fileName:
+                type: string
+              status:
+                type: string
+                enum: [queued, processing, completed, failed]
+
+    BulkProcessingStatus:
+      type: object
+      properties:
+        batchId:
+          type: string
+        status:
+          type: string
+          enum: [processing, completed, failed]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        totalFiles:
+          type: integer
+        completed:
+          type: integer
+        failed:
+          type: integer
+        processing:
+          type: integer
+        estimatedTimeRemaining:
+          type: integer
+        resumes:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              fileName:
+                type: string
+              status:
+                type: string
+                enum: [queued, processing, completed, failed]
+              progress:
+                type: integer
+                minimum: 0
+                maximum: 100
+              completedAt:
+                type: string
+                format: date-time
+              error:
+                type: string
+
+    ResumeAnalytics:
+      type: object
+      properties:
+        resumeId:
+          type: string
+          format: uuid
+        qualityScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        completenessScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        strengthAreas:
+          type: array
+          items:
+            type: string
+        improvementSuggestions:
+          type: array
+          items:
+            type: string
+        industryFit:
+          type: object
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 1
+        salaryEstimate:
+          type: object
+          properties:
+            min:
+              type: integer
+            max:
+              type: integer
+            currency:
+              type: string
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+        careerLevel:
+          type: string
+        experienceGaps:
+          type: array
+          items:
+            type: string
+        skillGaps:
+          type: object
+          properties:
+            recommended:
+              type: array
+              items:
+                type: string
+            emerging:
+              type: array
+              items:
+                type: string
+
+    MarketAnalytics:
+      type: object
+      properties:
+        timeframe:
+          type: string
+        totalResumes:
+          type: integer
+        topSkills:
+          type: array
+          items:
+            type: object
+            properties:
+              skill:
+                type: string
+              count:
+                type: integer
+              trend:
+                type: string
+                enum: [growing, stable, declining]
+              growthRate:
+                type: number
+        salaryTrends:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              median:
+                type: integer
+              trend:
+                type: string
+                enum: [increasing, stable, decreasing]
+              changePercent:
+                type: number
+        emergingSkills:
+          type: array
+          items:
+            type: string
+        industryDistribution:
+          type: object
+          additionalProperties:
+            type: number
+
+    ResumeUpdateRequest:
+      type: object
+      properties:
+        personalInfo:
+          $ref: '#/components/schemas/PersonalInfo'
+        summary:
+          $ref: '#/components/schemas/ProfessionalSummary'
+        experience:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkExperience'
+        education:
+          type: array
+          items:
+            $ref: '#/components/schemas/Education'
+        skills:
+          $ref: '#/components/schemas/Skills'
+        certifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Certification'
+
+    JobMatchingRequest:
+      type: object
+      required:
+        - jobDescription
+      properties:
+        jobDescription:
+          type: object
+          required:
+            - title
+            - requirements
+            - skills
+          properties:
+            title:
+              type: string
+              description: Job title
+              example: "Senior Software Engineer"
+            company:
+              type: string
+              description: Company name
+              example: "Tech Innovation Corp"
+            location:
+              type: string
+              description: Job location
+              example: "San Francisco, CA"
+            type:
+              type: string
+              enum: [full-time, part-time, contract, internship, temporary]
+              description: Employment type
+              example: "full-time"
+            experience:
+              type: object
+              properties:
+                minimum:
+                  type: integer
+                  description: Minimum years of experience required
+                  example: 5
+                preferred:
+                  type: integer
+                  description: Preferred years of experience
+                  example: 8
+                level:
+                  type: string
+                  enum: [entry, junior, mid-level, senior, executive, c-level]
+                  description: Experience level
+                  example: "senior"
+            description:
+              type: string
+              description: Detailed job description
+              example: "We are seeking a highly skilled Senior Software Engineer..."
+            requirements:
+              type: object
+              required:
+                - required
+              properties:
+                required:
+                  type: array
+                  items:
+                    type: string
+                  description: Required qualifications and skills
+                  example: ["5+ years of software development experience", "Proficiency in Python"]
+                preferred:
+                  type: array
+                  items:
+                    type: string
+                  description: Preferred qualifications and skills
+                  example: ["Experience with Docker and Kubernetes"]
+            skills:
+              type: object
+              required:
+                - required
+              properties:
+                required:
+                  type: array
+                  items:
+                    type: string
+                  description: Required technical skills
+                  example: ["Python", "JavaScript", "AWS"]
+                preferred:
+                  type: array
+                  items:
+                    type: string
+                  description: Preferred technical skills
+                  example: ["Docker", "Kubernetes", "Machine Learning"]
+            salary:
+              type: object
+              properties:
+                min:
+                  type: integer
+                  description: Minimum salary
+                  example: 140000
+                max:
+                  type: integer
+                  description: Maximum salary
+                  example: 180000
+                currency:
+                  type: string
+                  description: Currency code
+                  example: "USD"
+            benefits:
+              type: array
+              items:
+                type: string
+              description: Job benefits
+              example: ["Health insurance", "401k matching"]
+            industry:
+              type: string
+              description: Industry sector
+              example: "technology"
+        options:
+          type: object
+          properties:
+            includeExplanation:
+              type: boolean
+              default: true
+              description: Include detailed explanation of the match
+            detailedBreakdown:
+              type: boolean
+              default: true
+              description: Include detailed breakdown by category
+            suggestImprovements:
+              type: boolean
+              default: true
+              description: Include improvement suggestions
+
+    JobMatchingResponse:
+      type: object
+      required:
+        - matchId
+        - resumeId
+        - jobTitle
+        - matchingResults
+      properties:
+        matchId:
+          type: string
+          format: uuid
+          description: Unique identifier for this matching result
+          example: "match-550e8400-e29b-41d4-a716-446655440001"
+        resumeId:
+          type: string
+          format: uuid
+          description: Resume identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        jobTitle:
+          type: string
+          description: Job title that was matched against
+          example: "Senior Software Engineer"
+        company:
+          type: string
+          description: Company name
+          example: "Tech Innovation Corp"
+        matchingResults:
+          type: object
+          required:
+            - overallScore
+            - confidence
+            - recommendation
+          properties:
+            overallScore:
+              type: integer
+              minimum: 0
+              maximum: 100
+              description: Overall match score (0-100)
+              example: 87
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Confidence in the matching result (0-1)
+              example: 0.92
+            recommendation:
+              type: string
+              enum: [Poor Match, Weak Match, Moderate Match, Good Match, Strong Match, Excellent Match]
+              description: Overall recommendation based on score
+              example: "Strong Match"
+            categoryScores:
+              type: object
+              properties:
+                skillsMatch:
+                  $ref: '#/components/schemas/CategoryScore'
+                experienceMatch:
+                  $ref: '#/components/schemas/CategoryScore'
+                educationMatch:
+                  $ref: '#/components/schemas/CategoryScore'
+                roleAlignment:
+                  $ref: '#/components/schemas/CategoryScore'
+                locationMatch:
+                  $ref: '#/components/schemas/CategoryScore'
+            strengthAreas:
+              type: array
+              items:
+                type: string
+              description: Areas where the candidate excels
+              example: ["Strong technical background in required languages"]
+            gapAnalysis:
+              type: object
+              properties:
+                criticalGaps:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Gap'
+                improvementAreas:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Gap'
+            salaryAlignment:
+              type: object
+              properties:
+                candidateExpectation:
+                  type: string
+                  description: Candidate's salary expectation
+                  example: "Not specified"
+                jobSalaryRange:
+                  type: string
+                  description: Job's salary range
+                  example: "$140,000 - $180,000"
+                marketRate:
+                  type: string
+                  description: Market rate for similar positions
+                  example: "$145,000 - $175,000"
+                alignment:
+                  type: string
+                  enum: [below_range, within_range, above_range, unknown]
+                  description: How candidate expectations align with job
+                  example: "within_range"
+            competitiveAdvantages:
+              type: array
+              items:
+                type: string
+              description: Candidate's competitive advantages
+              example: ["AWS certification adds significant value"]
+        explanation:
+          type: object
+          properties:
+            summary:
+              type: string
+              description: Summary of the match analysis
+              example: "This candidate presents a strong match for the position"
+            keyFactors:
+              type: array
+              items:
+                type: string
+              description: Key factors in the matching decision
+              example: ["Technical skill set matches 80% of required technologies"]
+            recommendations:
+              type: array
+              items:
+                type: string
+              description: Recommendations for next steps
+              example: ["Schedule technical interview focusing on REST API development"]
+        metadata:
+          type: object
+          properties:
+            matchedAt:
+              type: string
+              format: date-time
+              description: When the matching was performed
+              example: "2025-09-10T10:45:00Z"
+            processingTime:
+              type: number
+              description: Processing time in seconds
+              example: 3.2
+            algorithm:
+              type: string
+              description: Algorithm version used for matching
+              example: "AI-Enhanced Semantic Matching v2.1"
+            confidenceFactors:
+              type: object
+              additionalProperties:
+                type: number
+                minimum: 0
+                maximum: 1
+              description: Factors contributing to confidence score
+              example:
+                dataCompleteness: 0.95
+                skillExtraction: 0.90
+                experienceAccuracy: 0.88
+
+    CategoryScore:
+      type: object
+      required:
+        - score
+        - weight
+      properties:
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Score for this category (0-100)
+          example: 85
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Weight of this category in overall score
+          example: 35
+        details:
+          type: object
+          additionalProperties: true
+          description: Detailed breakdown specific to this category
+
+    Gap:
+      type: object
+      required:
+        - category
+        - missing
+        - impact
+      properties:
+        category:
+          type: string
+          description: Category of the gap
+          example: "technical_skills"
+        missing:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+          description: What is missing (can be string or array)
+          example: "REST APIs experience"
+        impact:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Impact level of this gap
+          example: "medium"
+        suggestion:
+          type: string
+          description: Suggestion to address this gap
+          example: "Highlight any API development work in previous roles"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+          description: API endpoint path
+        requestId:
+          type: string
+          description: Unique request identifier for debugging
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validation_error:
+              summary: Validation error
+              value:
+                error: "VALIDATION_ERROR"
+                message: "Invalid input parameters"
+                details:
+                  field: "email"
+                  issue: "Invalid email format"
+                timestamp: "2025-09-10T10:30:00Z"
+                path: "/v1/resumes/upload"
+            missing_file:
+              summary: Missing required file
+              value:
+                error: "MISSING_FILE"
+                message: "Resume file is required"
+                timestamp: "2025-09-10T10:30:00Z"
+                path: "/v1/resumes/upload"
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_token:
+              summary: Invalid authentication token
+              value:
+                error: "UNAUTHORIZED"
+                message: "Invalid or expired authentication token"
+                timestamp: "2025-09-10T10:30:00Z"
+            missing_auth:
+              summary: Missing authentication
+              value:
+                error: "MISSING_AUTH"
+                message: "Authentication required"
+                timestamp: "2025-09-10T10:30:00Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            resume_not_found:
+              summary: Resume not found
+              value:
+                error: "RESUME_NOT_FOUND"
+                message: "Resume with the specified ID was not found"
+                details:
+                  resumeId: "550e8400-e29b-41d4-a716-446655440000"
+                timestamp: "2025-09-10T10:30:00Z"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rate_limit:
+              summary: Rate limit exceeded
+              value:
+                error: "RATE_LIMIT_EXCEEDED"
+                message: "Rate limit exceeded. Try again later."
+                details:
+                  limit: 1000
+                  window: "1 hour"
+                  retryAfter: 3600
+                timestamp: "2025-09-10T10:30:00Z"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            server_error:
+              summary: Internal server error
+              value:
+                error: "INTERNAL_ERROR"
+                message: "An internal server error occurred"
+                timestamp: "2025-09-10T10:30:00Z"
+                requestId: "req-550e8400-e29b-41d4-a716-446655440000"
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Resume Processing
+    description: Core resume upload, parsing, management operations, and AI-powered job matching
+  - name: Analytics
+    description: AI-powered analytics and insights
